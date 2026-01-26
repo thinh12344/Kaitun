@@ -1,3 +1,4 @@
+
 -- ⚙️ FAST CONFIG (FAST MỚI)
 getgenv().FastAttackNew = true
 getgenv().FAST_ON = true
@@ -4505,4 +4506,79 @@ StopTween(_G.Auto_Dungeon)
 task.delay(1, function()
     setStatus("WORKING")
     setFarm("AUTO LEVEL")
+end)
+-- ===== CORE AUTO FARM =====
+_G.AutoFarm = true
+_G.Level = true
+_G.TweenSpeed = 300
+
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser = game:GetService("VirtualUser")
+local LP = Players.LocalPlayer
+
+local function TweenTo(cf)
+    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local dist = (hrp.Position - cf.Position).Magnitude
+    local t = dist / _G.TweenSpeed
+    TweenService:Create(
+        hrp,
+        TweenInfo.new(t, Enum.EasingStyle.Linear),
+        {CFrame = cf}
+    ):Play()
+end
+
+local function GetQuest()
+    local gui = LP.PlayerGui:FindFirstChild("QuestGui")
+    if gui and gui.Enabled then return end
+    if not Qname or not Qdata or not PosQ then return end
+    TweenTo(PosQ)
+    task.wait(0.3)
+    ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", Qname, Qdata)
+end
+
+local function GetMob()
+    for _,v in pairs(workspace.Enemies:GetChildren()) do
+        if v.Name == Mon and v:FindFirstChild("Humanoid")
+        and v.Humanoid.Health > 0
+        and v:FindFirstChild("HumanoidRootPart") then
+            return v
+        end
+    end
+end
+
+-- ===== FARM LOOP =====
+task.spawn(function()
+    while task.wait(0.2) do
+        if not _G.AutoFarm or not _G.Level then continue end
+        if not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then continue end
+
+        QuestCheck()
+
+        local gui = LP.PlayerGui:FindFirstChild("QuestGui")
+        if not gui or not gui.Enabled then
+            GetQuest()
+            continue
+        end
+
+        local mob = GetMob()
+        if mob then
+            TweenTo(mob.HumanoidRootPart.CFrame * CFrame.new(0,0,3))
+        elseif PosM then
+            TweenTo(PosM)
+        end
+    end
+end)
+
+-- ===== AUTO ATTACK =====
+task.spawn(function()
+    while task.wait(0.1) do
+        if _G.AutoFarm then
+            VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+            task.wait(0.05)
+            VirtualUser:Button1Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        end
+    end
 end)
